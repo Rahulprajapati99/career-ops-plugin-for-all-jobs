@@ -1,8 +1,20 @@
-# Candidate data (PII protection)
+# Candidate data (PII)
+# Everything the user generates lives here. CI fails if any of it is committed.
 data/
 config/
+reports/
+output/
+jds/
+
+# Local resume/CV working files
+cv.md
+resume.md
+*.resume.html
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Scratch
 prd/
+node_modules/

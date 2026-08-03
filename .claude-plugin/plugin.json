@@ -1,20 +1,25 @@
 {
-  "name": "career-ops",
-  "version": "1.0.0",
-  "description": "Job search copilot for any industry. Evaluate job postings, generate ATS-optimized resumes, scan career portals, track applications, draft outreach, and research companies. Works for engineers, marketers, nurses, lawyers, and everyone in between.",
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "career-ops-alljobs",
+  "displayName": "Career-Ops for All Jobs",
+  "version": "1.1.0",
+  "description": "Job search copilot for any industry. Evaluate job postings, generate ATS-optimized resumes, scan career portals, track applications, time follow-ups, draft outreach, and research companies. Works for engineers, marketers, nurses, lawyers, electricians, and everyone in between. Interoperates with an existing career-ops checkout instead of creating a second tracker.",
   "author": {
-    "name": "Andrew Shwetzer",
-    "url": "https://github.com/andrewshwetzer"
+    "name": "Rahul Prajapati",
+    "url": "https://github.com/Rahulprajapati99"
   },
-  "repository": "https://github.com/andrewshwetzer/career-ops-plugin",
+  "homepage": "https://github.com/Rahulprajapati99/career-ops-plugin-for-all-jobs#readme",
+  "repository": "https://github.com/Rahulprajapati99/career-ops-plugin-for-all-jobs",
   "keywords": [
     "job-search",
     "resume",
+    "cv",
     "career",
-    "ATS",
+    "ats",
     "applications",
     "interview-prep",
-    "cowork"
+    "outreach",
+    "career-ops"
   ],
   "license": "MIT"
 }

@@ -1,7 +1,13 @@
 # Profile Schema Reference
 
-This documents every field in `data/profile.yml`. Users can edit this file
-directly or use the `/career-ops:setup` command to fill it conversationally.
+Every field in the profile file. Edit it directly, or run the **setup** command
+to fill it conversationally.
+
+The profile lives at `data/profile.yml` in standalone mode. Inside a career-ops
+checkout the plugin reads career-ops's own `config/profile.yml` instead — see
+`${CLAUDE_PLUGIN_ROOT}/references/data-layout.md`. That file uses different field
+names; the plugin reads them where they overlap and asks about the rest rather
+than rewriting a file the user maintains.
 
 ## Fields
 
@@ -106,13 +112,28 @@ persona:                           # Optional. Triggers special scoring adjustme
   career_returner: false
   international: false
   gap_explanation: ""              # If career_returner, brief explanation
+
+# === Follow-up Cadence ===
+followup_cadence:                  # Optional. Days. Omit to use the defaults shown.
+  applied_first_days: 7            # Wait this long before the first nudge
+  applied_subsequent_days: 7       # And this long between later ones
+  applied_max_followups: 2         # Stop after this many with no reply
+  responded_initial_days: 1        # They replied — respond within a day
+  responded_subsequent_days: 3
+  interview_thankyou_days: 1       # Thank-you note window after an interview
 ```
 
 ## Notes
 
-- `work_history` is the most important field for accurate evaluations.
-  It's populated automatically when you paste your resume during setup.
-- `credentials` only matter for regulated industries (Healthcare, Legal,
-  Trades, Non-Software Engineering, Finance, Education, Government).
-  If your industry doesn't require licenses, leave it empty.
-- `persona` modifiers adjust scoring weights. See scoring-rubric.md.
+- `work_history` carries more weight than any other field. Evaluations match JD
+  requirements against these entries, so titles alone produce vague scores —
+  the bullets are what make a match specific. Setup populates it from a pasted
+  resume.
+- `credentials` matter for regulated industries: Healthcare, Legal, Trades,
+  Non-Software Engineering, Finance, Education, Government. In the first four,
+  a missing required license caps the score at 2.0 regardless of everything
+  else. Leave it empty if your field doesn't license.
+- `persona` modifiers change scoring weights for every job you evaluate. See
+  `scoring-rubric.md`.
+- `followup_cadence` uses the same key names as career-ops's `config/profile.yml`,
+  so a cadence tuned in either place works in both.

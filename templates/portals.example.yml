@@ -1,0 +1,82 @@
+# Company Watchlist
+#
+# Copy to `config/portals.yml` (standalone) — or, if you already run career-ops,
+# it reads your existing `portals.yml` at the project root and this file is
+# unnecessary.
+#
+# Key names match career-ops's own portals.yml, so the same file works for both.
+
+# ── Title filter ────────────────────────────────────────────────────────────
+# Applied to job titles found during a scan. Case-insensitive substring match.
+title_filter:
+  # A title must contain at least one of these to be considered.
+  # Replace with keywords for YOUR target roles.
+  positive:
+    - "Product Manager"
+    - "Program Manager"
+    - "Product Owner"
+
+  # A title containing any of these is dropped, even if it matched above.
+  negative:
+    - "Intern"
+    - "Internship"
+    - "Contract"
+
+# ── Location filter (optional) ──────────────────────────────────────────────
+# Applied after the title filter. Delete the whole block to accept all locations.
+#
+# Order of evaluation:
+#   1. Empty location on a posting  → pass (missing data is not a reason to drop)
+#   2. Matches `always_allow`       → pass, overriding `block`
+#   3. Matches `block`              → drop
+#   4. `allow` empty                → pass
+#   5. `allow` non-empty            → must match at least one entry
+#
+# location_filter:
+#   always_allow:
+#     - "Remote"
+#   allow:
+#     - "United States"
+#     - "New York"
+#   block:
+#     - "On-site only"
+
+# ── Scan history ────────────────────────────────────────────────────────────
+# Postings already recorded in scan history are skipped forever by default.
+# Uncomment to let a URL become eligible again after N days — useful for roles
+# that get reposted at the same URL.
+#
+# scan_history:
+#   recheck_after_days: 30
+
+# ── Companies ───────────────────────────────────────────────────────────────
+# Prefer the company's own branded careers page over the raw ATS URL when one
+# exists — branded pages are indexed better and are less likely to 404.
+#
+#   careers_url  required. Where the jobs actually live.
+#   ats          optional. greenhouse | lever | ashby | smartrecruiters |
+#                workday | other. Detected from the URL when omitted.
+#   slug         optional. The company's identifier on that ATS. Detected from
+#                the URL when omitted.
+#   enabled      set false to keep a company on the list but skip it in scans.
+#   notes        free text, shown in scan output.
+
+tracked_companies:
+  - name: Example Corp
+    careers_url: https://job-boards.greenhouse.io/examplecorp
+    ats: greenhouse
+    slug: examplecorp
+    enabled: true
+    notes: "Replace this entry with a company you actually care about."
+
+  - name: Another Co
+    careers_url: https://jobs.lever.co/anotherco
+    ats: lever
+    slug: anotherco
+    enabled: true
+
+  # A company with no recognizable ATS still works — the scanner falls back to
+  # a plain web search scoped to the careers URL's domain.
+  - name: Local Employer
+    careers_url: https://www.localemployer.com/careers
+    enabled: false

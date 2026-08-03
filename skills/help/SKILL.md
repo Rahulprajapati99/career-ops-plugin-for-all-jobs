@@ -6,92 +6,113 @@ user-invocable: true
 allowed-tools:
   - Read
   - Glob
+  - Grep
 ---
 
 # career-ops Help
 
-Guide the user through available skills based on where they are in their
-job search.
+Point the user at the right next action for where they actually are.
 
 ## Step 0: Check State
 
-Read `data/profile.yml` - does it exist?
-Read `data/applications.md` - how many entries?
-Glob `data/evaluations/*.md` - how many evaluations?
-Glob `data/resumes/*.html` - how many resumes?
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+layout. Then establish state **cheaply**:
 
-## Step 1: Show Skill Directory
+- `Glob` the profile path — does it exist?
+- `Glob` the evaluations directory — how many files?
+- `Glob` the resumes directory — how many files?
+- Read the tracker for statuses and scores.
 
-If the user asked about a specific skill, show detailed help for that skill.
-Otherwise show the full directory:
+That is enough for everything below. Do not open evaluation reports here; the
+tracker already carries company, role, score, and status.
+
+Mention the layout only when it's host mode and this is the first time it has
+come up in the session:
+
+> "You're in a career-ops checkout, so I'm using your existing tracker and CV."
+
+## Step 1: Show the Skill Directory
+
+If the user asked about one specific skill, show detailed help for that skill
+only. Otherwise:
 
 ```
-## career-ops - Your Job Search Copilot
+## career-ops — Your Job Search Copilot
 
 | Skill | What It Does | Try Saying |
 |---|---|---|
-| **evaluate** | Score a job posting against your background (A-F blocks) | "Evaluate this job posting" |
-| **tailor-resume** | Generate an ATS-optimized resume for a specific role | "Tailor my resume for the Acme role" |
-| **scan** | Search company career portals for matching openings | "Scan Google for jobs" |
-| **triage** | Quick-score your pipeline of scan results | "Triage my pipeline" |
-| **track** | View and update your application tracker | "Show my applications" |
-| **apply** | Help fill out application forms | "Help me with this application" |
-| **research** | Deep-dive a company before applying or interviewing | "Research Stripe" |
-| **outreach** | Draft LinkedIn/email messages to contacts | "Draft outreach to the hiring manager" |
-| **compare** | Side-by-side comparison of opportunities | "Compare my top options" |
+| **evaluate** | Score a posting against your background (blocks A-F) | "Evaluate this job posting" |
+| **tailor-resume** | ATS-safe resume for one specific role | "Tailor my resume for Acme" |
+| **scan** | Search company career portals for openings | "Scan Google for jobs" |
+| **triage** | Quick-score a pipeline of scan results | "Triage my pipeline" |
+| **track** | Application tracker and search stats | "Show my applications" |
+| **follow-up** | Who's overdue a nudge, and the message to send | "Check my follow-ups" |
+| **apply** | Answers for an application form | "Help me with this application" |
+| **research** | Company brief before applying or interviewing | "Research Stripe" |
+| **outreach** | LinkedIn and email messages to contacts | "Draft outreach to the hiring manager" |
+| **compare** | Opportunities side by side | "Compare my top options" |
 
 **Commands:**
+
 | Command | What It Does |
 |---|---|
-| **setup** | Set up or update your profile |
-| **quick-eval** | Fast score + one paragraph (no full report) |
+| **setup** | Create or update your profile |
+| **quick-eval** | Score plus one paragraph, no full report |
 ```
 
-## Step 2: Smart Suggestion
+## Step 2: Suggest the Next Action
 
-Based on the user's current state, suggest the most valuable next action:
+Pick the single most useful next step for their state. One suggestion, not a
+menu — a list of five options is the same as no recommendation.
 
 **No profile:**
-> "Start here: paste your resume or tell me about yourself so I can
-> evaluate jobs for you."
+> "Start here: paste your resume, or just tell me about yourself, and I'll set
+> up your profile."
 
-**Profile exists, no evaluations:**
-> "You're all set! Paste a job posting (URL or text) and I'll evaluate
-> how well you match."
+**Profile, no evaluations:**
+> "You're set up. Paste a job posting — URL or text — and I'll score how well
+> you match."
 
-**Has evaluations, no resumes:**
-> "You have {n} evaluations. Your top match is **{company} - {role}**
-> ({score}/5.0). Want me to tailor a resume for it?"
+**Evaluations, no resumes:**
+> "You have {n} evaluations. Your top match is **{company} — {role}**
+> ({score}/5.0). Want a resume tailored for it?"
 
-**Has resumes, none applied:**
-> "You have resumes ready for {n} roles. Ready to apply? Say 'help me
-> with the {company} application' and I'll generate your form answers."
+**Resumes, nothing applied:**
+> "You have resumes ready for {n} roles. Say 'help me with the {company}
+> application' and I'll draft your form answers."
 
-**Has applications:**
-> "You have {n} active applications. Say 'show my applications' for a
-> status overview, or 'update {company} to {status}' to track progress."
+**Applied, some overdue:**
+> "{n} of your applications are past the follow-up window. Say 'check my
+> follow-ups' and I'll tell you which ones and draft the messages."
 
 **Has interviews:**
-> "You have interviews coming up! Say 'research {company}' to prepare."
+> "You have interviews coming up. Want me to research {company} to prep?"
 
-## Step 3: Workflow Overview (if user asks "how does this work")
+**Everything terminal:**
+> "This batch is wrapped up. Ready to scan for new openings?"
+
+## Step 3: Workflow Overview
+
+Only when the user asks how the system works:
 
 ```
 ## The career-ops Workflow
 
-1. **Set up** your profile (one time, 5 minutes)
-   ↓
-2. **Evaluate** job postings (paste a JD, get an honest A-F assessment)
-   ↓
-3. **Tailor** your resume for the best matches
-   ↓
-4. **Apply** with personalized form answers
-   ↓
-5. **Track** your applications and follow up
+1. Set up your profile (once, about five minutes)
+2. Evaluate postings — paste a JD, get an honest A-F assessment
+3. Tailor your resume for the strong matches
+4. Apply with personalized form answers
+5. Track applications and follow up on time
 
-**Discovery tools** (use anytime):
-- **Scan** company career pages for new openings
-- **Research** companies before interviews
-- **Outreach** to contacts at target companies
-- **Compare** multiple opportunities side by side
+Discovery tools, usable at any point:
+- scan      find openings on company career pages
+- research  company brief before applying or interviewing
+- outreach  message a contact at a target company
+- compare   weigh multiple opportunities against each other
 ```
+
+If the layout is host mode, add:
+
+> "Because you're in a career-ops checkout, these skills read and write your
+> existing files — the same tracker, CV, and reports the career-ops modes use.
+> There's no second copy of your data."

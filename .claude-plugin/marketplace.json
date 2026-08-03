@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "career-ops-alljobs",
+  "description": "Industry-general job search plugin. A Cowork-native companion to the career-ops job search system.",
+  "owner": {
+    "name": "Rahul Prajapati",
+    "url": "https://github.com/Rahulprajapati99"
+  },
+  "plugins": [
+    {
+      "name": "career-ops-alljobs",
+      "source": "./",
+      "displayName": "Career-Ops for All Jobs",
+      "description": "Evaluate job postings, tailor ATS-safe resumes, scan career portals, track applications, time follow-ups, draft outreach, and research companies — for any industry.",
+      "category": "productivity",
+      "tags": [
+        "job-search",
+        "resume",
+        "career",
+        "ats"
+      ]
+    }
+  ]
+}

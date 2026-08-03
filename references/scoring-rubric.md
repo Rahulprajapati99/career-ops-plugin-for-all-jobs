@@ -1,5 +1,10 @@
 # Evaluation Scoring Rubric
 
+This file is authoritative for scoring weights and the PASS/FAIL rules. The
+per-archetype lens files under `lenses/` describe *how to read* a posting in
+that industry and point back here for the numbers — where the two ever appear to
+disagree, this file wins.
+
 ## Score Dimensions (weighted)
 
 | Dimension | Base Weight | What It Measures |
