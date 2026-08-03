@@ -1,107 +1,98 @@
 ---
 name: apply
 description: "Help fill out a job application form. Generates personalized answers for every field using your profile and evaluation. Never auto-submits. Use when someone says 'help me apply', 'fill out this application', or 'application for'."
-argument-hint: "<company name or 'help me with this application'>"
+argument-hint: "<company name, or 'help me with this application'>"
 user-invocable: true
 disable-model-invocation: true
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Glob
+  - Grep
   - WebFetch
 ---
 
 # Application Form Assistant
 
-Help fill out job application forms with personalized, honest answers.
+Draft honest, personalized answers for a job application form.
 
-**CRITICAL: NEVER auto-submit an application.** Always show the user every
-answer and get explicit confirmation before any form interaction. Always stop
-before any submit button.
+**Never submit an application.** Show the user every answer and get explicit
+confirmation before touching a form. Stop before any submit button, every time,
+including when the user says to go ahead and submit — the final click is theirs.
 
 ## Step 0: Load Context
 
-1. Read `data/profile.yml` for structured background
-2. Read `data/resume.md` for full resume text
-3. Find the relevant evaluation in `data/evaluations/`
-4. Check `data/research/{company}.md` for company intel
-5. Check `data/resumes/` for a tailored resume file
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+layout. Then read the profile, the resume/CV, the evaluation for this role, the
+company research file if one exists, and check for a tailored resume.
 
-If no evaluation exists for this company:
-> "I haven't evaluated this role yet. Want me to evaluate the posting
-> first? That gives me better context for your application answers."
+If there's no evaluation for this company:
+
+> "I haven't evaluated this role yet. Want me to score the posting first? It
+> gives me the specifics that make these answers worth submitting."
 
 ## Step 1: Identify the Application
 
-Parse user input:
-- **Company/role name:** Find the matching evaluation
-- **"Help me with this application":** Ask which company/role, or if
-  computer use is available, take a screenshot to identify the form
+- **Company or role named:** find the matching evaluation.
+- **"Help me with this application":** ask which role. If computer use is
+  available and the form is on screen, a screenshot can identify it.
 
-## Step 2: Map Common Form Fields
+## Step 2: Standard Fields
 
-Generate answers for standard application fields:
+| Field | Source |
+|---|---|
+| Name, email, phone | Profile |
+| Resume upload | Point at the tailored resume file |
+| Cover letter | Step 3 |
+| "Why this company?" | Research plus the evaluation |
+| "Why this role?" | Evaluation Block C plus the profile narrative |
+| Years of experience | Profile — the honest number |
+| Salary expectations | Evaluation Block D plus the profile target |
+| Work authorization | Profile |
+| Willing to relocate | Profile work preference |
+| Start date | Ask the user |
 
-| Field | Source | How to Fill |
-|---|---|---|
-| Name / Email / Phone | profile.yml | Direct copy |
-| Resume upload | Point to file | "Upload `data/resumes/{file}.html` (or PDF if you printed it)" |
-| Cover letter | Generate below | Tailored to this role |
-| "Why this company?" | Research + evaluation | Specific, referencing company details |
-| "Why this role?" | Evaluation Block C + narrative | Connect background to role requirements |
-| Years of experience | profile.yml | Honest number |
-| Salary expectations | Evaluation Block D | Use target from profile, informed by market data |
-| Work authorization | profile.yml visa_status | Direct answer |
-| Willing to relocate | profile.yml work_preference | Direct answer |
-| Start date | Ask user | "When can you start?" |
+Where the profile doesn't answer a field, ask. Don't infer work authorization,
+notice period, or salary from context — these are the fields where a plausible
+guess becomes a misrepresentation on a document the user signs.
 
-## Step 3: Cover Letter (when needed)
+## Step 3: Cover Letter
 
-Structure:
-1. **Opening:** Specific hook about the company (NOT "I'm excited to apply")
-2. **Bridge:** How your specific background connects to their specific need
-3. **Evidence:** 2-3 concrete accomplishments from your experience relevant to this role
-4. **Close:** Forward-looking, confident but not presumptuous
+250–350 words, four moves:
 
-Rules:
-- 250-350 words
-- Match JD language and keywords
-- Match company tone (formal for law firms, conversational for startups)
-- Reference specific details from research (if available)
-- Every claim must be backed by real experience from the profile
+1. **Opening** — a specific hook about the company. Not "I'm excited to apply."
+2. **Bridge** — how this background connects to their stated need.
+3. **Evidence** — two or three concrete accomplishments relevant to this role.
+4. **Close** — forward-looking, confident, not presumptuous.
 
-## Step 4: Handle Custom Questions
+Match the JD's language and the company's register: formal for a law firm,
+plainer for an early-stage startup. Every claim traces to the profile.
 
-For each custom application question:
+## Step 4: Custom Questions
 
-**Short answer (< 500 chars):**
-- Draw from evaluation blocks, profile, or research
-- Be specific, not generic
-- Include a number or concrete detail when possible
+**Short answer (under 500 characters):** draw from the evaluation, profile, or
+research. Include a number or a concrete detail.
 
-**"Tell me about a time..." (behavioral):**
-- Use STAR format from evaluation Block F stories
-- Match the most relevant story to the question
+**Behavioral ("tell me about a time..."):** use the STAR story from evaluation
+Block F that best matches the question.
 
-**"What are your salary expectations?":**
-- Use target from profile, informed by Block D market data
-- If range requested, give profile target range
-- If single number requested, give midpoint of target range
+**Salary expectations:** the profile's target, informed by Block D market data.
+A range if they ask for a range; the midpoint if they demand one number.
 
-**Yes/No questions (authorization, relocation, etc.):**
-- Answer directly from profile data
-- If not in profile, ask the user
+**Yes/no (authorization, relocation, sponsorship):** answer directly from the
+profile, or ask.
 
-**EEO / demographic questions:**
-- Tell the user these are optional and legally cannot affect their candidacy
-- Let them answer themselves
+**EEO and demographic questions:** these are voluntary and legally cannot affect
+candidacy. Say that, and leave them for the user to answer themselves. Don't
+draft them.
 
-## Step 5: Present All Answers
+## Step 5: Present Everything
 
-Show EVERY generated answer before any action:
+Show every generated answer before any action:
 
 ```
-## Application Answers: {Company} - {Role}
+## Application Answers: {Company} — {Role}
 
 **Cover letter:**
 {full text}
@@ -109,45 +100,44 @@ Show EVERY generated answer before any action:
 **"Why this company?"**
 {answer}
 
-**"Why this role?"**
-{answer}
-
 **Salary expectations:** {answer}
 
 **Custom questions:**
-1. "{question}" - {answer}
-2. "{question}" - {answer}
-
----
-
-Review these answers. You can:
-- Ask me to revise any answer
-- Copy them into the application form
-- Tell me to adjust the tone
+1. "{question}" — {answer}
 ```
 
-## Step 6: Computer Use Assistance (only if available and user requests)
+Then:
 
-If computer use is available AND the user explicitly asks for help filling
-the form:
+> "Review these. You can ask me to revise any of them, adjust the tone, or copy
+> them straight into the form."
 
-1. Navigate to the application page
-2. Fill each field with the APPROVED answers only
-3. Upload resume file if the form accepts it
-4. **STOP before the Submit button.** Take a screenshot. Say:
+## Step 6: Computer Use
 
-> "Everything is filled in. Please review the form carefully and click
-> Submit when you're ready. I won't click it for you."
+Only if computer use is available **and** the user explicitly asks for help
+filling the form:
 
-If no computer use:
-> "Copy the answers above into the application form. Let me know
-> when you've submitted and I'll update your tracker."
+1. Navigate to the application page.
+2. Fill each field with the **approved** answers only — nothing improvised to
+   fit a field you hadn't seen.
+3. If the form has a field that wasn't in the approved set, stop and ask. Don't
+   fill it.
+4. **Stop before Submit.** Screenshot the filled form and say:
 
-## Step 7: Update Tracker
+> "Everything's filled in. Please review it and click Submit yourself when
+> you're ready — I won't click it for you."
 
-After the user confirms submission:
-- Update `data/applications.md`: Status -> "Applied", Date Applied -> today
-- Add note with any relevant details
+Without computer use:
 
-> "Tracked! Your application to {company} is logged. I'll remind you
-> to follow up if you haven't heard back in a week."
+> "Copy the answers above into the form. Tell me when you've submitted and I'll
+> update your tracker."
+
+## Step 7: Update the Tracker
+
+After the user confirms they submitted — not before, and not on the assumption
+that they will — set the status to `Applied` and the applied date to today.
+Match the tracker's existing columns and status vocabulary per `data-layout.md`.
+
+Then seed the follow-up clock:
+
+> "Tracked. The usual follow-up window is about a week — say 'check my
+> follow-ups' any time and I'll tell you who's due and draft the message."

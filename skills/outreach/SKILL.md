@@ -6,106 +6,103 @@ user-invocable: true
 allowed-tools:
   - Read
   - Write
-  - WebSearch
   - Glob
+  - Grep
+  - WebSearch
 ---
 
 # Draft Outreach
 
-Create personalized outreach messages for job search networking.
+Personalized messages for job search networking.
 
 ## Step 0: Load Context
 
-1. Read `data/profile.yml`
-2. Check `data/research/{company}.md` for company intelligence
-3. Check `data/evaluations/` for any evaluation at this company
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+layout. Read the profile, the company research file if one exists, and the
+machine summary of any evaluation at this company.
 
-If no company research exists:
-> "I don't have research on {company} yet. Better outreach comes from
-> better intel. Want me to research them first, or should I draft
-> something with what I know?"
+Without research on the company:
+
+> "I don't have research on {company} yet. Specific beats generic by a wide
+> margin here. Want me to research them first, or draft with what I have?"
 
 ## Step 1: Identify the Contact
 
-Parse user input for: contact name, title, company, platform.
+Parse for name, title, company, and platform. Where no contact is named, offer
+the ones in the research file:
 
-If no specific contact named, suggest based on research file:
-> "Based on my research, here are contacts at {company}:
-> {list from research}
-> Who would you like to reach out to?"
+> "From my research, here are contacts at {company}: {list}. Who do you want to
+> reach?"
 
-## Step 2: Determine Message Type
+## Step 2: Pick the Message Type
 
 | Type | When | Length |
 |---|---|---|
-| LinkedIn connection request | No existing connection | Under 300 characters |
-| LinkedIn message | Already connected | 100-200 words |
-| Cold email | Have their email | 100-150 words |
-| Follow-up | Already reached out, no response 5+ days | 50-75 words |
+| LinkedIn connection request | Not connected | Under 300 characters, hard limit |
+| LinkedIn message | Already connected | 100–200 words |
+| Cold email | You have their address | 100–150 words |
+| Follow-up | No response after 5+ days | 50–75 words |
 
-Ask the user which type if not clear from context.
+Ask which, if context doesn't make it obvious.
 
-## Step 3: Generate Using 3-Part Structure
+## Step 3: Hook + Proof + Proposal
 
-### Part 1: Hook (about THEM, not you)
+**Hook — about them, not you.** Something specific: their work, a launch, a
+recent event from the research.
 
-Reference something specific about the company, their work, or a recent event.
+> Weak: "I'm really interested in your company." (about you)
+> Weak: "I'd love to connect." (generic)
+> Better: "Your team's work on {specific launch} caught my attention."
 
-Bad: "I'm really interested in your company" (about you)
-Bad: "I'd love to connect" (generic)
-Good: "Your team's work on {specific project/launch} caught my attention"
-Good: "I noticed {company} just {recent event from research}"
+**Proof — one quantifiable thing about you.** One sentence, one number,
+relevant to their world.
 
-### Part 2: Proof (one quantifiable thing about you)
+> Weak: "I have 10 years of experience in marketing."
+> Better: "I grew organic traffic 3× at {Company} in eight months."
 
-One sentence. One number. Directly relevant to their world.
+Pull the proof point from the profile that connects to this company's actual
+situation. The strongest number in the profile is not always the right one.
 
-Bad: "I have 10 years of experience in marketing"
-Good: "I grew organic traffic 3x at {Company} in 8 months"
-Good: "I managed a $2M portfolio with 98% client retention"
+**Proposal — a low-pressure ask.**
 
-Pull the most relevant proof point from the user's profile that connects
-to the target company's needs.
-
-### Part 3: Proposal (low-pressure ask)
-
-Bad: "Can you refer me?" (presumptuous)
-Bad: "I'd love to pick your brain" (vague, one-sided)
-Good: "Would you be open to a 15-minute chat about what {team} looks for?"
-Good: "I'd appreciate any advice on standing out for the {role} opening"
+> Weak: "Can you refer me?" (presumptuous)
+> Weak: "I'd love to pick your brain." (vague, one-sided)
+> Better: "Would you be open to 15 minutes on what {team} looks for?"
 
 ## Step 4: Output
 
 ```
-## Outreach: {Contact Name} at {Company}
+## Outreach: {Contact} at {Company}
 
-**Platform:** {LinkedIn connection / LinkedIn message / Email / Follow-up}
+**Platform:** {type}
 **Context:** {role or department}
 
 ---
-
-{the message, properly formatted}
-
+{the message, formatted as it will be sent}
 ---
 
-**Character count:** {n} / {limit for platform}
+**Characters:** {n} / {limit}
 **Tone:** {Professional / Warm / Direct}
 ```
 
-## Step 5: Offer Variations
+For connection requests, the character count is a hard constraint, not a target.
+Over the limit means the message gets truncated mid-sentence — cut it down
+rather than sending it long.
+
+## Step 5: Variations
 
 > "Want me to:
-> - **Adjust the tone?** (more formal / more casual / more direct)
-> - **Write for a different platform?** (email instead of LinkedIn)
-> - **Draft a follow-up** for if they don't respond in a week?"
+> - **Adjust the tone?** More formal, warmer, more direct
+> - **Rewrite for another platform?** Email instead of LinkedIn
+> - **Draft the follow-up** for a week from now if they don't reply?"
 
 ## Rules
 
-- NEVER draft messages that misrepresent the user's background
-- NEVER suggest the user claim a connection that doesn't exist
-- NEVER draft overly flattering or sycophantic messages
-- Keep LinkedIn connection requests under 300 characters (hard limit)
-- Every message must contain something specific (not a template)
-- If no company research and no web search available, be honest:
-  "This message would be stronger with specific company context.
-  Consider researching them first."
+- Never misrepresent the user's background.
+- Never imply a connection, referral, or shared history that doesn't exist —
+  including soft versions like "I've been following your work for years."
+- No flattery. Recruiters read hundreds of these and it reads as filler.
+- Every message contains something specific to this company. If you can't find
+  one specific true thing to say, the message isn't ready:
+  > "This would be stronger with real company context. Want me to research them
+  > first?"

@@ -6,16 +6,26 @@ user-invocable: true
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Glob
+  - Grep
 ---
 
 # Application Tracker
 
-View and manage your job applications in one place.
+View and manage applications in one place.
 
-## Step 0: Load Tracker
+## Step 0: Load the Tracker
 
-Read `data/applications.md`. If it doesn't exist, create it with the header:
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+layout, then read the tracker.
+
+**Read its existing header row and use those columns.** The standalone and
+career-ops layouts differ, and career-ops trackers may carry an extra `Via`
+column. Never impose a column layout on a tracker that already has one — that
+silently orphans every existing row.
+
+If the tracker doesn't exist, create it with the standalone header:
 
 ```markdown
 # Job Applications
@@ -24,44 +34,48 @@ Read `data/applications.md`. If it doesn't exist, create it with the header:
 |---|---|---|---|---|---|---|---|
 ```
 
-Then tell the user:
-> "Your tracker is empty. Evaluate a job posting to get started, or
-> paste a JD and I'll score it for you."
+Then say:
 
-## Step 1: Parse User Intent
+> "Your tracker is empty. Paste a job posting and I'll score it to get started."
 
-- **No argument / "show tracker" / "my applications":** Display full table + stats
-- **Status filter ("show applied" / "what's in interview"):** Filter by status
-- **Company filter ("show Stripe"):** Filter by company name
-- **Update ("update Acme PM to Interview"):** Change status of matching row
-- **Stats ("how's my search going" / "search stats"):** Show summary statistics
-- **Delete ("remove the Acme entry"):** Confirm, then remove row
+## Step 1: Parse Intent
+
+| Input | Action |
+|---|---|
+| No argument, "show tracker", "my applications" | Full table plus stats |
+| "show applied", "what's in interview" | Filter by status |
+| "show Stripe" | Filter by company |
+| "update Acme PM to Interview" | Change one row's status |
+| "how's my search going", "stats" | Statistics only |
+| "remove the Acme entry" | Confirm, then remove the row |
 
 ## Step 2: Display
 
-### Full View
+**Full view:** show the table as it exists, then the stats below it.
 
-Show the table as-is from applications.md, then show stats below it.
-
-### Filtered View
-
-Show only matching rows, then summary:
+**Filtered view:** show matching rows, then:
 > "Showing {n} applications with status '{status}'."
 
-### Update Flow
+**Update flow:**
 
-1. Find the matching row (by company + role, fuzzy match OK)
-2. Show current status and proposed new status
-3. Ask for confirmation:
-   > "Update **{Company} - {Role}** from **{old status}** to **{new status}**?"
-4. On confirmation, update the row
-5. If transitioning to "Applied", set Date Applied to today
-6. If transitioning to "Accepted", congratulate them!
+1. Find the matching row (fuzzy match on company + role is fine).
+2. Validate the transition against
+   `${CLAUDE_PLUGIN_ROOT}/references/states.md`. If it isn't legal:
+   > "Can't move from {old} to {new}. Valid next steps: {list}."
+3. Confirm before writing:
+   > "Update **{Company} — {Role}** from **{old}** to **{new}**?"
+4. On confirmation, edit that row in place. Edit the single cell — never rewrite
+   the whole file, and never renumber rows.
+5. Moving to `Applied` sets the applied date to today.
+6. Moving to `Accepted` deserves an actual congratulations.
 
-Validate transitions against references/states.md. If invalid:
-> "Can't move from {old} to {new}. Valid next steps: {list}."
+In host mode, write career-ops's state vocabulary rather than this plugin's.
+The mapping is in `data-layout.md`.
 
 ## Step 3: Statistics
+
+Compute these from the tracker table alone. Do **not** open evaluation reports
+to build stats — the tracker already holds every field below.
 
 ```
 ## Your Job Search Dashboard
@@ -69,36 +83,36 @@ Validate transitions against references/states.md. If invalid:
 | Metric | Count |
 |---|---|
 | Total evaluated | {n} |
-| Resumes tailored | {n with status >= Resume Ready} |
+| Resumes tailored | {n} |
 | Applied | {n} |
 | Response rate | {responses / applied}% |
 | Interviews | {n} |
 | Offers | {n} |
 | Average score (applied) | {avg}/5.0 |
-| Active (not resolved) | {n non-terminal} |
+| Active (non-terminal) | {n} |
 
 **Top scoring opportunities:**
-1. {Company} - {Role} ({score}/5.0) - {status}
-2. ...
-3. ...
+1. {Company} — {Role} ({score}/5.0) — {status}
 
-**Needs attention (applied but no response > 7 days):**
-- {Company} - {Role} - applied {date}
+**Needs attention (applied, no response in 7+ days):**
+- {Company} — {Role} — applied {date}
 ```
 
-If there are evaluations without resumes tailored:
-> "You have {n} evaluations scoring 3.5+ without a tailored resume.
-> Want me to create one? Say 'tailor my resume for {top company}'."
+Report the response rate honestly. With fewer than about ten applications the
+percentage is noise, so give the raw counts instead: "2 responses from 6
+applications" says more than "33%".
 
 ## Step 4: Suggest Next Actions
 
-Based on current state:
+- Mostly `Evaluated`: "You've scored these but haven't applied to many. Want
+  resumes tailored for your top-scored roles?"
+- Several `Applied` with no movement: "Some of these are due a follow-up. Say
+  'check my follow-ups' and I'll tell you which ones and draft the messages."
+- Any `Interview`: "You have interviews coming up. Want me to research
+  {company}?"
+- Everything terminal: "This batch is wrapped up. Ready to scan for new roles?"
 
-- Mostly "Evaluated": "You've got evaluations but haven't applied to many.
-  Want me to tailor resumes for your top-scored roles?"
-- Several "Applied" with no updates: "Time for follow-ups? I can draft
-  outreach messages to check in on your applications."
-- Has "Interview": "Great, you have interviews! Want me to research
-  {company} to help you prepare?"
-- Everything terminal: "Your current batch is wrapped up. Ready to scan
-  for new opportunities?"
+When evaluations scoring 3.5+ have no tailored resume:
+
+> "You have {n} evaluations at 3.5 or above without a resume. Want me to build
+> one for {top company}?"

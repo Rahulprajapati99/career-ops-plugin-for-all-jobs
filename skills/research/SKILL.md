@@ -6,101 +6,106 @@ user-invocable: true
 allowed-tools:
   - Read
   - Write
+  - Glob
+  - Grep
   - WebSearch
   - WebFetch
-  - Glob
 ---
 
 # Company Research
 
 Build an intelligence brief on a target company.
 
-## Step 1: Gather Data
+## Step 0: Load Context
 
-Use WebSearch to find:
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+layout. Check the evaluations directory for an existing evaluation at this
+company — if one exists, read its machine summary so the brief can speak to the
+specific role rather than the company in general.
 
-1. **Company basics:** What they do, size, founded, HQ, funding/revenue
-2. **Recent news (last 6 months):** Product launches, layoffs, acquisitions,
-   leadership changes, funding rounds
-3. **Culture signals:** Glassdoor rating + recurring themes, any "best places
-   to work" lists or notable controversies
-4. **Team/department:** Who leads the department you'd join? Likely hiring
-   manager? Team size?
-5. **Tech/tools/methodology:** What does this team use? (Check job postings,
-   tech blog, team member LinkedIn profiles via web search)
+## Step 1: Gather
+
+Search for:
+
+1. **Basics** — what they do, size, founded, HQ, funding or revenue
+2. **Recent news, last six months** — launches, layoffs, acquisitions,
+   leadership changes, funding
+3. **Culture signals** — Glassdoor rating and recurring themes, awards,
+   controversies
+4. **Team** — who leads the department, likely hiring manager, team size
+5. **Tools and methods** — what this team actually uses, from job postings, the
+   engineering or company blog, and public profiles
+
+Date every claim. Company facts go stale fast, and a funding round from two
+years ago presented as current is worse than no information in an interview.
 
 If WebSearch is unavailable:
-> "I can share what I know about {company}, but for the latest info
-> (recent news, Glassdoor reviews, team changes), enable web search
-> in your settings. Here's what I can tell you from general knowledge:"
 
-Then provide what you know, clearly labeled as potentially outdated.
+> "For current information — recent news, reviews, team changes — I'd need web
+> search enabled. Here's what I know from general knowledge, which may be out of
+> date:"
+
+Then label it clearly as such.
 
 ## Step 2: Find Contacts
 
-Search for likely hiring contacts:
-- **Hiring manager** (head of the relevant department)
-- **Recruiter** (search "{company} recruiter {department}")
-- **Team members** (potential peers for informational outreach)
+Look for the hiring manager (head of the relevant department), a recruiter for
+that function, and potential peers worth an informational conversation.
 
-For each contact found: Name, Title, and where you found them.
+Use public web results and company pages. Do not scrape LinkedIn profiles. For
+each contact, record the name, title, and where you found it — the source is
+what lets the user judge whether it's current.
 
-Note: Do NOT scrape LinkedIn profiles directly. Use web search results
-and public company pages only.
-
-## Step 3: Check for Existing Evaluation
-
-Read `data/evaluations/` for any evaluation at this company. If found,
-reference it to add context to the brief.
-
-## Step 4: Output
+## Step 3: Output
 
 ```
-## Company Brief: {Company Name}
+## Company Brief: {Company}
 
 ### Overview
 | Field | Detail |
 |---|---|
-| **Industry** | {industry} |
-| **Size** | {employee count range} |
-| **Founded** | {year} |
-| **HQ** | {location} |
-| **Revenue/Funding** | {if available} |
-| **Website** | {URL} |
+| **Industry** | |
+| **Size** | |
+| **Founded** | |
+| **HQ** | |
+| **Revenue/Funding** | |
+| **Website** | |
 
-### Recent News (Last 6 Months)
-- {headline} ({source}, {date})
-- ...
-(If no news found: "No major recent news found.")
+### Recent News (last 6 months)
+- {headline} — {source}, {date}
 
 ### Culture Snapshot
-**Glassdoor:** {rating}/5 ({review count} reviews)
-**Positive themes:** {what employees like}
-**Negative themes:** {common complaints}
-**Work style:** {remote/hybrid/in-office, hours culture}
+**Glassdoor:** {rating}/5 from {n} reviews
+**Positive themes:** {what employees consistently like}
+**Negative themes:** {consistent complaints}
+**Work style:** {remote/hybrid/on-site, hours culture}
 
 ### Key Contacts
 | Name | Title | Source |
 |---|---|---|
-| {name} | {title} | {where found} |
 
 ### Interview Intelligence
-- **Company values/mission:** {what they emphasize}
+- **What they emphasize:** {values, mission, how they talk about themselves}
 - **Current priorities:** {what they're working on now}
-- **Smart questions to ask:**
-  1. {question based on recent news or strategy}
-  2. {question about team/culture}
-  3. {question about role's impact}
-- **Topics to handle carefully:** {any sensitive items}
+- **Questions worth asking:**
+  1. {grounded in recent news or strategy}
+  2. {about the team}
+  3. {about the role's impact}
+- **Handle carefully:** {sensitive topics — layoffs, a public incident, a
+  departure}
 ```
 
-## Step 5: Save
+Where a section turned up nothing, write "No {x} found" rather than filling it
+with plausible generalities. An empty Recent News section is a real finding: a
+company with no news in six months is a different prospect from one with three
+funding rounds.
 
-Write to `data/research/{company-slug}.md`.
+## Step 4: Save
 
-> "Research saved. You can reference it anytime.
+Write to the research path for the active layout, as `{company-slug}.md`.
+
+> "Research saved.
 >
-> Want me to:
 > - **Draft outreach** to one of these contacts?
-> - **Evaluate a role** at this company? Paste the job posting.
-> - **Prepare interview stories** specific to this company?"
+> - **Evaluate a role** here? Paste the posting.
+> - **Prep interview stories** for this company?"

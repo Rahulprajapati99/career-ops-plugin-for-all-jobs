@@ -1,142 +1,147 @@
 ---
 name: tailor-resume
 description: "Generate an ATS-optimized resume tailored to a specific job posting. Creates clean HTML you can print to PDF. Works for any industry. Use when someone says 'tailor my resume', 'make me a resume', 'create a resume for', or 'update my resume for'."
-argument-hint: "<company name or 'for the latest evaluation'>"
+argument-hint: "<company name, or 'for the latest evaluation'>"
 user-invocable: true
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Glob
+  - Grep
 ---
 
 # Tailor Your Resume
 
-Generate an ATS-optimized resume customized for a specific job posting.
-Read references/ats-rules.md before generating any HTML.
+Generate an ATS-safe resume for one specific posting.
 
 ## Step 0: Load Context
 
-1. Read `data/profile.yml` for structured background data
-2. Read `data/resume.md` if it exists (full resume text for detail)
-3. Find the target evaluation:
-   - If the user specified a company/role, search `data/evaluations/` for a match
-   - If "latest" or no argument, use the most recent evaluation file
-   - If ambiguous, list recent evaluations and ask which one
-4. If no evaluation exists:
-   > "I need to evaluate the job first so I know what to emphasize.
-   > Paste the job posting and I'll assess it, then generate your resume."
+1. Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+   layout.
+2. Read `${CLAUDE_PLUGIN_ROOT}/references/ats-rules.md`.
+3. Read the profile and the resume/CV file.
+4. Find the target evaluation:
+   - Named company or role: search the evaluations directory for a match.
+   - "Latest" or no argument: the most recent evaluation file.
+   - Ambiguous: list the recent ones and ask which.
 
-## Step 1: Keyword Extraction
+Read the full target evaluation — this skill needs Block E, so the machine
+summary alone isn't enough. It's one file, not the whole directory.
 
-From the evaluation + JD, extract 15-20 keywords that ATS systems scan for:
+If no evaluation exists for this role:
 
-- Exact phrases from "Required Qualifications" (highest priority)
-- Industry-standard terms (not creative synonyms)
-- Certifications, tools, methodologies named in the JD
-- Action verbs that match the responsibilities section
+> "I need to evaluate the posting first so I know what to emphasize. Paste it
+> and I'll score it, then build the resume."
 
-## Step 2: Detect Language & Locale
+Tailoring without an evaluation produces a generic resume with the company's
+name on it, which is worse than the user's existing one.
 
-- JD in English + US company: Letter paper (8.5" x 11")
-- JD in English + non-US: A4
-- JD in another language: match that language, use A4
-- Resume language MUST match JD language
+## Step 1: Extract Keywords
 
-## Step 3: Build Resume Content
+From the evaluation and the JD, pull 15–20 terms an ATS will scan for:
 
-Using the evaluation's Block E (Tailoring Plan) as a guide, construct
-each resume section from profile data:
+- Exact phrases from "Required Qualifications" — highest priority
+- Industry-standard terms, not creative synonyms
+- Named certifications, tools, and methodologies
+- Action verbs matching the responsibilities section
 
-### Professional Summary (3-4 lines)
-- Open with years of experience + core identity
-- Include 3-5 top keywords from the JD naturally
-- End with a forward-looking statement connecting to this specific role
-- Use the narrative.headline from profile as a starting point
+## Step 2: Detect Language & Paper Size
 
-### Experience Section
-- Include all roles from work_history, most relevant FIRST
-- For each role: Company, Title, Dates on one line
-- 3-5 bullets per role, ordered by relevance to THIS JD
-- Each bullet: Action verb + what you did + quantified result
-- Mirror JD language exactly (if JD says "project management",
-  write "project management", not "programme management")
-- Pull specific numbers from proof_points and work_history highlights
+| JD language | Company location | Output |
+|---|---|---|
+| English | US | Letter, 8.5" × 11" |
+| English | Non-US | A4 |
+| Other | Any | Match the JD's language, A4 |
 
-### Education Section
-- Degree, School, Year
-- Include relevant coursework or honors only if recent grad
+The resume's language must match the JD's. A German-language posting gets a
+German resume.
 
-### Skills Section
-- List JD keywords FIRST, then additional skills
-- Group by category if 10+ skills (Technical, Tools, Methodologies, etc.)
-- Include both acronym and full form: "Search Engine Optimization (SEO)"
+## Step 3: Build the Content
 
-### Certifications Section (if applicable)
-- From credentials in profile
-- Include status, jurisdiction, number if relevant
+Use the evaluation's Block E as the plan, and the profile as the only source of
+facts.
 
-### Projects / Portfolio (if applicable and relevant)
-- Only include if the archetype values it (Creative, Technology)
-- Brief description + link + key metric
+**Professional Summary** (3–4 lines): years of experience and core identity,
+three to five JD keywords worked in naturally, and a closing line connecting to
+this specific role.
+
+**Experience:** every role from work history, most relevant first. Company,
+title, and dates on one line. Three to five bullets per role, ordered by
+relevance to this JD. Each bullet is an action verb, what they did, and a
+quantified result. Mirror the JD's exact wording — if it says "project
+management", write "project management", not "programme management".
+
+**Education:** degree, school, year. Coursework and honors only for recent
+graduates.
+
+**Skills:** JD keywords first, then the rest. Group by category past ten skills.
+Give both forms on first use: "Search Engine Optimization (SEO)".
+
+**Certifications** (when the profile has any): type, status, jurisdiction, and
+number where relevant. For the PASS/FAIL archetypes — healthcare, legal, trades,
+non-software engineering — this section goes directly under the summary, above
+experience. It's the first thing that gets checked.
+
+**Projects / Portfolio:** only where the archetype values it, and only when
+relevant to this role.
+
+Everything here comes from the profile and resume. The source-of-truth boundary
+in `data-layout.md` applies: reorder, reframe, emphasize — never invent. If Block
+E suggests emphasizing something the profile doesn't support, say so and leave
+it out rather than writing it in.
 
 ## Step 4: Generate HTML
 
-Read the template from references/resume-template.html.
+Read `${CLAUDE_PLUGIN_ROOT}/references/resume-template.html` and fill every
+`{{PLACEHOLDER}}`.
 
-Fill all `{{PLACEHOLDER}}` slots with the generated content.
-
-ATS compliance rules (from references/ats-rules.md):
-- Single column ONLY
-- Standard section headers exactly: "Experience", "Education", "Skills"
-- No images, icons, or graphics
-- All text selectable (no text-in-images)
-- Standard fonts: Arial, Calibri, Georgia, or system sans-serif
-- Font size: 10-12pt body, 14-16pt name
-- Margins: 0.5-1 inch
-- No headers/footers (ATS strips them)
-- Max 2 pages
+Non-negotiable ATS constraints from `ats-rules.md`: single column, standard
+section headers spelled exactly ("Experience", "Education", "Skills"), no images
+or icons, all text selectable, standard fonts, 10–12pt body, 0.5–1in margins, no
+running headers or footers, no JavaScript, two pages maximum.
 
 ## Step 5: Output
 
-Write the HTML to `data/resumes/{company-slug}-{role-slug}.html`.
+Write to the resumes path for the active layout, named
+`{company-slug}-{role-slug}.html`.
 
-Show the user a preview of the content (not the HTML code):
+Show the user the content, not the markup:
 
 ```
-## Resume Preview: {Name} - {Target Role} at {Company}
+## Resume Preview: {Name} — {Role} at {Company}
 
-**Summary:** {first 2 lines}
+**Summary:** {first two lines}
 
 **Experience:**
-- {Role 1} at {Company} ({dates}) - {first bullet}
-- {Role 2} at {Company} ({dates}) - {first bullet}
+- {Role} at {Company} ({dates}) — {first bullet}
 
 **Skills:** {top 10}
 
-**Keywords matched:** {n}/20 from the JD
+**Keywords matched:** {n} of {total} from the JD
 ```
 
-## Step 6: PDF Instructions
+If the keyword match is low, say which ones didn't make it and why — usually
+because the profile has no evidence for them. That's useful information: it's
+the gap list for the interview.
 
-> "Your tailored resume is saved at `data/resumes/{filename}.html`.
+## Step 6: PDF
+
+> "Saved to `{path}`.
 >
-> **To save as PDF:**
-> 1. Open the file in your browser (double-click it)
-> 2. Press **Cmd+P** (Mac) or **Ctrl+P** (Windows)
-> 3. Select **Save as PDF**
-> 4. Done!
->
-> The HTML is designed to print cleanly. What you see is what you get."
+> **To make a PDF:** open it in your browser, press Cmd+P (Mac) or Ctrl+P
+> (Windows), and choose Save as PDF. The HTML is built to print cleanly."
 
-## Step 7: Update Tracker
+## Step 7: Update the Tracker
 
-Update the matching row in `data/applications.md`:
-- Status: "Resume Ready" (if currently "Evaluated")
-- Notes: append "Resume: {filename}"
+Set this role's status to `Resume Ready` if it's currently `Evaluated`, and note
+the resume filename. Match the tracker's existing columns and status vocabulary
+per `data-layout.md` — in host mode, career-ops records the resume in its `PDF`
+column and leaves the status at `Evaluated`.
 
 ## Step 8: Next Steps
 
-> "Resume is ready! Next steps:
+> "Resume is ready.
 > - **Review it** by opening the HTML file
-> - **Apply** by saying 'help me with the {company} application'
-> - **Compare** this role with others: 'compare my options'"
+> - **Apply:** 'help me with the {company} application'
+> - **Compare** against your other options: 'compare my options'"

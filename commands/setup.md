@@ -6,134 +6,143 @@ user-invocable: true
 allowed-tools:
   - Read
   - Write
+  - Edit
   - Glob
 ---
 
 # Set Up Your Profile
 
-Walk the user through creating their job search profile. Conversational,
-friendly, zero jargon. This is the first thing a new user does.
+Build the user's job search profile. Conversational, no jargon. For most people
+this is the first thing they do with the plugin, so the tone here sets the tone
+for everything after.
 
-## Step 0: Check Existing
+This command is the **only** place a profile gets created. Other skills that
+find no profile route here rather than improvising one — a profile written by a
+shortcut path is one the other skills can't read.
 
-Read `data/profile.yml`. If it exists and no --reset flag:
+## Step 0: Resolve the Layout
 
-> "You're already set up! Here's a quick summary of your profile:
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and determine which
+layout applies.
+
+**In host mode**, the user already has a career-ops profile at
+`config/profile.yml` and a CV at `cv.md`. Do not create a second one. Read what
+exists and report it:
+
+> "You already have a career-ops profile — {name}, targeting {roles}. I'll use
+> it. Want to change anything?"
+
+If a field this plugin uses is missing from that profile (persona modifiers,
+`exclude_keywords`), show the exact YAML to add and let the user add it.
+`config/profile.yml` is theirs; propose, don't write.
+
+**In standalone mode**, continue below.
+
+## Step 1: Check for an Existing Profile
+
+Read the profile path. If it exists and there's no `--reset`:
+
+> "You're already set up:
 >
-> **{Name}** — {Current title} at {Company}
-> Looking for: {Target role}
+> **{Name}** — {title} at {company}
+> Looking for: {target role}
 >
-> Want to update it? Say 'setup --reset' to start fresh,
-> or tell me what to change and I'll update just that part."
+> Say 'setup --reset' to start fresh, or just tell me what to change and I'll
+> update that part."
 
-If --reset flag or file doesn't exist, continue to Step 1.
+Otherwise continue.
 
-## Step 1: Welcome
+## Step 2: Welcome
 
-> "Let's set up your job search profile. This helps me evaluate jobs,
-> tailor resumes, and write messages that actually sound like you.
+> "Let's set up your profile. This is what lets me evaluate jobs, tailor
+> resumes, and write messages that sound like you.
 >
-> **Fastest way:** Paste your resume below (text or PDF content) and
-> I'll pull everything from it automatically.
+> **Fastest way:** paste your resume and I'll pull everything from it.
 >
-> **Or** I can ask you a few questions instead. What do you prefer?"
+> **Or** I can ask you a few questions instead. Which do you prefer?"
 
-## Step 2A: Resume Ingestion (preferred path)
+## Step 3A: From a Resume (preferred)
 
-If the user pastes resume content:
-
-1. Parse the resume into structured data:
-   - Name, contact info, LinkedIn URL
-   - Work history (each role: title, company, dates, bullet points)
-   - Education (degree, school, year)
-   - Skills (extract all mentioned skills and tools)
-   - Certifications/licenses (if any)
-   - Projects or portfolio items (if listed)
-
-2. Save the raw resume text to `data/resume.md` as a reference document.
-
-3. Ask follow-up questions for fields NOT in the resume:
+1. Parse it into structured data: name and contact details, LinkedIn, work
+   history (title, company, dates, bullets per role), education, skills,
+   certifications and licenses, projects.
+2. Save the raw text to the resume path for the layout. Keep it verbatim — it's
+   the detail source for evaluations and the fact-check reference for anything
+   generated later.
+3. Ask only for what the resume doesn't contain:
    - "What kind of role are you looking for next?"
-   - "Where are you willing to work? (Remote, specific city, flexible)"
-   - "What's your target salary range? (Skip if you'd rather not say)"
-   - "Anything else I should know? Career change, gap to explain, special situation?"
+   - "Where are you willing to work — remote, a specific city, flexible?"
+   - "Target salary range? Skip if you'd rather not say."
+   - "Anything else I should know? Career change, a gap, a special situation?"
 
-4. Continue to Step 3.
+Where the resume is ambiguous — overlapping dates, an unexplained gap, a title
+that doesn't match the described work — ask rather than picking an
+interpretation. These are exactly the details that later show up in a cover
+letter, and a wrong guess is a wrong claim on a document the user signs.
 
-## Step 2B: Conversational Collection (fallback)
+## Step 3B: By Question (fallback)
 
-If the user prefers questions, ask these one at a time. Wait for each answer.
+One at a time, waiting for each answer:
 
 1. "What's your name?"
-2. "What do you do right now? (Job title and company, or 'between jobs')"
-3. "Walk me through your last 2-3 roles briefly. For each: title, company,
-   how long, and one or two things you accomplished."
-4. "What kind of role are you looking for? (Job title, industry)"
-5. "Where are you willing to work? (City, remote, hybrid, relocate)"
-6. "How many years of work experience total?"
-7. "What are your strongest skills? (Top 5-10)"
-8. "Any certifications or licenses? (Skip if none)"
-9. "What's your salary range? (Target and minimum, or skip)"
-10. "Got a LinkedIn profile URL?"
-11. "Anything else? (Career change, gap, special circumstances, portfolio)"
+2. "What do you do right now — title and company, or 'between jobs'?"
+3. "Walk me through your last two or three roles: title, company, how long, and
+   one or two things you accomplished."
+4. "What kind of role are you looking for? Title and industry."
+5. "Where are you willing to work?"
+6. "How many years of experience total?"
+7. "Your strongest skills — top five to ten?"
+8. "Any certifications or licenses?"
+9. "Salary range — target and minimum? Skip if you'd rather not."
+10. "LinkedIn URL?"
+11. "Anything else? Career change, gap, portfolio, special circumstances?"
 
-## Step 3: Build Profile
+## Step 4: Build the Profile
 
-Construct `data/profile.yml` from collected data. Follow the schema in
-references/profile-schema.md exactly.
+Write the profile following
+`${CLAUDE_PLUGIN_ROOT}/references/profile-schema.md` exactly. Other skills read
+these field names; a renamed field is an invisible break.
 
-Key rules:
-- Populate `work_history` with actual role details, not just titles
-- Extract quantified achievements into `proof_points`
-- Auto-detect persona modifiers:
-  - If graduated within last 2 years: `recent_graduate: true`
-  - If previous roles are in a different industry than target: `career_changer: true`
-  - If gap > 1 year in work history: `career_returner: true`
-  - If visa_status is anything other than citizen/permanent resident: `international: true`
-- Generate `narrative.headline` from their experience (one compelling line)
-- Generate `narrative.superpowers` from their strongest skills/achievements
+- Populate `work_history` with real role detail, not just titles. This is the
+  single most load-bearing field for evaluation accuracy.
+- Pull quantified achievements into `proof_points`.
+- Set persona modifiers from what you actually learned:
+  - graduated within two years → `recent_graduate`
+  - prior roles in a different industry from the target → `career_changer`
+  - a gap over a year in the work history → `career_returner`
+  - visa status other than citizen or permanent resident → `international`
+- Draft `narrative.headline` and `narrative.superpowers` from their strongest
+  material.
 
-Write the completed profile to `data/profile.yml`.
+Persona modifiers change how every future job gets scored, so name them out loud
+in Step 5 rather than setting them silently. Someone who doesn't consider
+themselves a career changer should get to say so.
 
-## Step 4: Confirm
-
-Show the user a summary:
+## Step 5: Confirm
 
 > "Here's what I have:
 >
-> **{Name}** — {Current title} at {Company}
+> **{Name}** — {title} at {company}
 > **Experience:** {years} years
-> **Looking for:** {Target role} in {industries}
+> **Looking for:** {target role} in {industries}
 > **Location:** {preference}
 > **Key skills:** {top 5}
 > **Salary target:** {range}
 >
 > **Work history:**
-> - {Role 1} at {Company} ({dates})
-> - {Role 2} at {Company} ({dates})
-> - ...
+> - {Role} at {Company} ({dates})
 >
-> This look right? I can fix anything now, or you can update later."
+> Look right? I can fix anything now, or you can change it later."
 
-Wait for confirmation. Fix any corrections.
+Wait for confirmation and apply corrections before moving on.
 
-## Step 5: Next Steps
+## Step 6: Next Steps
 
-> "You're all set! Here's what to do next:
+Create the tracker if it doesn't exist, using the standalone header from
+`data-layout.md`.
+
+> "You're set. From here:
 >
-> **Option 1:** Paste a job posting (URL or text) and I'll evaluate how well
-> you match.
->
-> **Option 2:** Say 'scan [company name]' to search their career page for
-> openings.
->
-> **Option 3:** Say 'help' to see everything I can do."
-
-Create `data/applications.md` if it doesn't exist:
-
-```markdown
-# Job Applications
-
-| Date Added | Date Applied | Company | Role | Score | Status | Evaluation | Notes |
-|---|---|---|---|---|---|---|---|
-```
+> - Paste a job posting and I'll evaluate how well you match
+> - Say 'scan {company}' to search a company's careers page
+> - Say 'help' to see everything available"

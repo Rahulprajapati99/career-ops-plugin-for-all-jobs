@@ -1,0 +1,35 @@
+name: validate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate plugin structure
+        run: node scripts/validate-plugin.mjs --strict
+
+      - name: Check for committed candidate data
+        # data/ and config/ hold PII and are gitignored. A commit that adds them
+        # anyway is the failure this repo can least afford to ship quietly.
+        run: |
+          leaked=$(git ls-files 'data/*' 'config/*' || true)
+          if [ -n "$leaked" ]; then
+            echo "Candidate data is tracked in git:"
+            echo "$leaked"
+            exit 1
+          fi
+          echo "No candidate data tracked."

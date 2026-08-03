@@ -6,140 +6,134 @@ user-invocable: true
 allowed-tools:
   - Read
   - Write
-  - WebSearch
+  - Edit
   - Glob
+  - Grep
+  - WebSearch
 ---
 
 # Scan for Job Openings
 
-Search company career portals for roles matching your profile.
-Use ATS type and slug detection (see references/ats-endpoints.md) to build
-targeted site-scoped WebSearch queries.
+Search company career portals for roles matching the profile.
 
 ## Step 0: Load Context
 
-1. Read `data/profile.yml` for target roles, skills, seniority
-2. Read `config/portals.yml` if it exists (company watchlist)
-3. Read `data/scan-history.md` if it exists (dedup against seen postings)
-4. Read `data/applications.md` to exclude roles already tracked
+Read `${CLAUDE_PLUGIN_ROOT}/references/data-layout.md` and resolve the active
+layout. Then read, from the paths it gives:
 
-## Step 1: Determine What to Scan
+1. The profile — target roles, skills, seniority, exclusions.
+2. The company watchlist, if one exists.
+3. Scan history — for deduplication against postings already seen.
+4. The tracker — to exclude roles already being tracked.
 
-Parse user input:
+If no watchlist exists and the user asked to scan one, offer to seed it from
+`${CLAUDE_PLUGIN_ROOT}/templates/portals.example.yml`:
 
-- **Company name:** Look up in portals.yml for ATS type and slug.
-  If not found, use WebSearch to find their careers page and detect ATS.
-- **URL:** Detect ATS type from URL pattern:
-  - `boards.greenhouse.io/{slug}` or `{company}.greenhouse.io` -> Greenhouse
-  - `jobs.lever.co/{slug}` -> Lever
-  - `jobs.ashbyhq.com/{slug}` or `{company}.ashbyhq.com` -> Ashby
-  - `jobs.smartrecruiters.com/{slug}` -> SmartRecruiters
-  - Other -> use WebSearch with `{company name} careers {role keywords}`
-- **"all" / "scan my watchlist":** Scan every enabled company in portals.yml.
-  If no portals.yml exists, tell the user:
-  > "You don't have a company watchlist yet. Tell me some companies
-  > you're interested in and I'll set one up."
-- **"scan {industry}":** Use WebSearch to find companies hiring in that
-  industry, then scan their career pages.
+> "You don't have a watchlist yet. Tell me some companies you're interested in
+> and I'll build one."
 
-## Step 2: Fetch Job Listings
+## Step 1: Determine Scope
 
-### Tier 1: WebSearch (primary)
+- **Company name:** look it up in the watchlist for its ATS type and slug. If
+  absent, search for the careers page and detect the ATS from the URL.
+- **URL:** detect the ATS from the URL pattern. Patterns per platform are in
+  `${CLAUDE_PLUGIN_ROOT}/references/ats-endpoints.md`.
+- **"all" / "scan my watchlist":** every entry with `enabled: true`.
+- **"scan {industry}":** search for companies hiring in that industry, then scan
+  their careers pages.
 
-Use WebSearch with targeted site-scoped queries to find job listings.
-Use the ATS type and slug identified in Step 1 to build precise queries.
+## Step 2: Search
 
-**Search strategy by ATS:**
+Build site-scoped queries from the ATS type and slug:
 
-- **Ashby:** `site:jobs.ashbyhq.com/{slug} {target role keywords}`
-- **Lever:** `site:jobs.lever.co/{slug} {target role keywords}`
-- **Greenhouse:** `site:job-boards.greenhouse.io/{slug} {target role keywords}`
-  (Note: Greenhouse pages are poorly indexed. If no results, try
-  `{company name} careers {target role keywords} greenhouse`)
-- **SmartRecruiters:** `site:jobs.smartrecruiters.com/{slug} {target role keywords}`
-- **Workday:** `site:{tenant}.myworkdayjobs.com {target role keywords}`
-- **Generic / unknown ATS:** `{company name} careers {target role keywords} {current year}`
+| ATS | Query shape |
+|---|---|
+| Ashby | `site:jobs.ashbyhq.com/{slug} {role keywords}` |
+| Lever | `site:jobs.lever.co/{slug} {role keywords}` |
+| Greenhouse | `site:job-boards.greenhouse.io/{slug} {role keywords}` |
+| SmartRecruiters | `site:jobs.smartrecruiters.com/{slug} {role keywords}` |
+| Workday | `site:{tenant}.myworkdayjobs.com {role keywords}` |
+| Unknown | `{company} careers {role keywords} {current year}` |
 
-**Build target role keywords** from the profile: combine primary_role,
-secondary_roles, and top 3 skills. Example for a marketing director:
-`marketing director OR head of marketing OR VP marketing`
+Greenhouse boards index poorly. When a site-scoped Greenhouse query returns
+nothing, retry once as `{company} careers {role keywords} greenhouse` before
+concluding there are no openings — an empty result there usually means the
+crawler hasn't reached the board, not that the company isn't hiring.
 
-**Parse search results:** Each result typically contains the job title
-in the link text and the URL to the posting. Extract title and URL from
-each search result. If the search returns descriptions, extract location
-and department info as well.
+Build role keywords from the profile: primary role, secondary roles, and the top
+three skills. For a marketing director that's
+`marketing director OR head of marketing OR VP marketing`.
 
-**Run multiple queries if needed:** One for the primary role, one for
-secondary roles. Deduplicate by URL before filtering.
+Run one query for the primary role and one for secondary roles. Deduplicate by
+URL before filtering.
 
-### Tier 2: Manual Fallback
+**If search returns nothing for a company:**
 
-If WebSearch fails to return results:
-> "I couldn't find listings automatically for {company}. Here's their
-> careers URL: {url}. You can browse it and paste any interesting
-> job postings for me to evaluate."
+> "I couldn't find listings automatically for {company}. Their careers page is
+> {url} — browse it and paste anything interesting and I'll evaluate it."
 
-## Step 3: Filter & Match
+Say which of the two it is: no matching roles, or no results at all. They mean
+different things and the user's next move differs.
 
-For each job listing found:
+## Step 3: Filter & Score
 
-1. **Title relevance:** Compare against target roles from profile.yml
-   - Match target role keywords (primary + secondary roles)
-   - Exclude roles that don't match seniority level
-   - Exclude titles with negative keywords if profile has exclude_keywords
+For each listing:
 
-2. **Quick relevance score (0-10):**
-   - Title match to target roles: 0-4 points
-   - Skills/keyword overlap with profile: 0-3 points
-   - Location/remote match: 0-2 points
-   - Seniority alignment: 0-1 point
+1. **Title relevance** against target roles. Drop titles matching the profile's
+   `exclude_keywords` or clearly outside the target seniority.
+2. **Relevance score, 0–10:**
+   - Title match to target roles: 0–4
+   - Skill/keyword overlap with the profile: 0–3
+   - Location or remote match: 0–2
+   - Seniority alignment: 0–1
+3. **Deduplicate:** skip URLs already in scan history, and company + title pairs
+   already in the tracker.
 
-3. **Dedup:**
-   - Check URL against `data/scan-history.md` (skip if seen)
-   - Check company + title against `data/applications.md` (skip if tracked)
+This is title-and-metadata scoring only. It is not a fit assessment — that's
+what `triage` and `evaluate` are for, and presenting it as one would mislead.
 
 ## Step 4: Output
 
 ```
-## Scan Results: {Company} - {date}
+## Scan Results: {Company} — {date}
 
-Found **{X}** openings, **{Y}** match your profile.
+Found **{X}** openings, **{Y}** matching your profile.
 
-### Matches (by relevance)
+### Matches
 
 | # | Role | Location | Relevance | Link |
 |---|---|---|---|---|
 | 1 | {title} | {location} | {score}/10 | {URL} |
-| 2 | ... | ... | ... | ... |
 
-### Filtered Out ({Z} roles)
-{Brief list: "3 junior roles, 2 in unrelated departments, 1 requires
-relocation to {city}"}
+### Filtered Out ({Z})
+{Grouped reasons: "3 junior roles, 2 outside your target function, 1 on-site in {city}"}
 ```
 
-## Step 5: Save & Next Steps
+Give the filtered-out reasons by group rather than listing every row. The user
+needs to know whether the filter is behaving, not to review each rejection.
 
-Add all matches to `data/pipeline.md` (create if doesn't exist):
+## Step 5: Save
+
+Append matches to the pipeline file:
 
 ```markdown
-# Job Pipeline
-
 | Date Found | Company | Role | Relevance | URL | Status |
 |---|---|---|---|---|---|
 | {today} | {company} | {title} | {score}/10 | {url} | New |
 ```
 
-Log ALL seen postings (matches + filtered) to `data/scan-history.md`:
+Log **everything seen**, matched and filtered, to scan history. That's what makes
+the next scan cheap — without it, every scan re-processes the same postings.
 
-```markdown
-| Date | Company | Role | URL | Action |
-|---|---|---|---|---|
-| {today} | {company} | {title} | {url} | Matched / Filtered: {reason} |
-```
+In host mode, scan history is career-ops's `data/scan-history.tsv`: tab-separated,
+append-only, nine columns. Match the column order of the existing rows and leave
+the fingerprint column empty rather than inventing a value — career-ops computes
+that hash itself and a fabricated one would corrupt its cross-listing detection.
+
+## Step 6: Next Steps
 
 > "Found {Y} matching roles at {company}.
 >
-> Want me to:
-> - **Evaluate** the top match? Say 'evaluate #1'
-> - **Triage** the full pipeline? Say 'triage my pipeline'
-> - **Scan** another company? Say 'scan {company}'"
+> - **Evaluate** the top match: 'evaluate #1'
+> - **Triage** the whole pipeline: 'triage my pipeline'
+> - **Scan** another company: 'scan {company}'"
