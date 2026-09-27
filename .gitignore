@@ -18,3 +18,10 @@ Thumbs.db
 # Scratch
 prd/
 node_modules/
+
+# Secrets & Environment
+.env*
+!.env.example
+*.pem
+*.key
+
